@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>วงล้อเลขอะตอม</title>
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--p:#b79ced;--pd:#7e57c2;--ink:#3b2a5e}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Mali',sans-serif;background:linear-gradient(160deg,#f6f0ff,#e8f4ff 60%,#fff0f6);color:var(--ink);min-height:100vh}
+#app{max-width:1100px;margin:auto;padding:14px}
+h1{margin:6px 0;text-align:center;font-size:1.6rem}h2{margin:4px 0}
+.c{text-align:center}
+.card{background:#fff;border-radius:20px;padding:14px;box-shadow:0 4px 14px #b79ced44;margin:10px 0}
+button{font:inherit;border:0;border-radius:14px;padding:10px 20px;background:var(--pd);color:#fff;font-weight:700;cursor:pointer;font-size:1rem;margin:3px}
+button:disabled{opacity:.4;cursor:default}
+button.alt{background:#ffd6e7;color:#a03a68}
+input[type=text]{font:inherit;padding:10px 14px;border-radius:14px;border:2px solid var(--p);font-size:1.1rem;text-align:center;width:min(300px,90%)}
+.chip{display:inline-block;padding:4px 12px;margin:3px;border-radius:99px;background:#efe6ff;cursor:default}
+.chip.ok{background:#d4f5de}.c>.chip[data-q]{cursor:pointer}
+.tm{font-size:2rem;font-weight:700;text-align:center;color:var(--pd)}
+.eq{text-align:center;font-size:1.2rem;margin:8px 0;min-height:34px}
+.pt{overflow-x:auto;padding:6px 2px}
+.grid{display:grid;grid-template-columns:repeat(18,1fr);gap:3px;min-width:720px}
+.el{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;cursor:pointer;font-size:1rem;position:relative;user-select:none;color:#3b2a5e}
+.el small{font-size:.55rem;font-weight:400;position:absolute;top:2px;right:4px}
+.el.sel{background:var(--pd)!important;color:#fff;transform:scale(1.12);z-index:1;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--pd)}
+.slot{display:flex;gap:10px;justify-content:center;margin:10px 0}
+.reel{width:90px;height:120px;font-size:4.5rem;font-weight:700;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:18px;border:4px solid var(--p);box-shadow:inset 0 -10px 18px #b79ced33}
+.reel.on{color:var(--p);animation:sh .12s infinite}
+@keyframes sh{50%{transform:translateY(5px)}}
+.rk{display:flex;gap:10px;background:#fff;border-radius:16px;padding:10px;margin:8px 0;box-shadow:0 3px 10px #b79ced33;animation:in .4s both}
+@keyframes in{from{opacity:0;transform:translateY(10px)}}
+.bd{min-width:44px;height:44px;border-radius:50%;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem}
+.t0 .bd{background:#ffc83d}.t1 .bd{background:#b8c2cc}.t2 .bd{background:#e8a06a}
+.pp{padding:2px 6px;margin-top:3px}.pp small{color:#8a76b0}.pp.me{background:#fff3b8;border-radius:8px}
+.df{color:#a03a68;font-size:.9rem}
+</style></head><body>
+<div id="app"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+// ====== ตั้งค่า: ใส่ firebaseConfig เดิมจากเกมบิงโก ======
+const FIREBASE_CONFIG={
+  apiKey:"YOUR_API_KEY",
+  authDomain:"YOUR_PROJECT.firebaseapp.com",
+  databaseURL:"https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId:"YOUR_PROJECT",
+  appId:"YOUR_APP_ID"
+};
+const HOST_PIN="366282", MAX=100, PICK_SEC=180, TOP=15;
+// ========================================================
+firebase.initializeApp(FIREBASE_CONFIG);
+const db=firebase.database(), R=db.ref('numwheel');
+const SYM="H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og".split(' ');
+const $=s=>document.querySelector(s), T=(s,h)=>{const e=$(s);if(e)e.innerHTML=h};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pad=n=>String(n).padStart(3,'0');
+const isHost=new URLSearchParams(location.search).has('host');
+if(isHost&&sessionStorage.nwok!=='1'){if(prompt('PIN คุณครู')!==HOST_PIN){location.search='';throw 0}sessionStorage.nwok='1'}
+const me=localStorage.nwid||(localStorage.nwid='p'+Math.random().toString(36).slice(2,10));
+let S={},P={},D={},off=0,sel=[],selInit=0,lastSeq=-1,animating=false,view=null,key='';
+const now=()=>Date.now()+off;
+db.ref('.info/serverTimeOffset').on('value',s=>off=s.val()||0);
+R.on('value',s=>{const v=s.val()||{};S=v.state||{};P=v.players||{};D=v.draws||{};render()});
+
+function pos(z){
+  if(z==1)return[1,1];if(z==2)return[1,18];
+  if(z<=4)return[2,z-2];if(z<=10)return[2,z+8];
+  if(z<=12)return[3,z-10];if(z<=18)return[3,z];
+  if(z<=36)return[4,z-18];if(z<=54)return[5,z-36];
+  if(z<=56)return[6,z-54];if(z==57)return[6,3];
+  if(z<=71)return[9,z-54];if(z<=86)return[6,z-68];
+  if(z<=88)return[7,z-86];if(z==89)return[7,3];
+  if(z<=103)return[10,z-86];return[7,z-100];
+}
+function tableHTML(){
+  let h='<div class="pt"><div class="grid" id="pt">';
+  for(let z=1;z<=118;z++){const[r,c]=pos(z);
+    h+=`<div class="el" data-z="${z}" style="grid-row:${r};grid-column:${c};background:hsl(${(c-1)*19},75%,86%)"><small>${z}</small>${SYM[z-1]}</div>`}
+  return h+'<div style="grid-row:8;grid-column:1/-1;height:8px"></div></div></div>';
+}
+const SLOT='<div class="slot"><div class="reel">?</div><div class="reel">?</div><div class="reel">?</div></div>';
+
+function render(){
+  const ph=S.phase||'lobby',k=(isHost?'h':'s')+ph+(P[me]?1:0);
+  if(k!==key){key=k;shell(ph)}
+  update();
+}
+function shell(ph){
+  lastSeq=-1;animating=false;
+  let h='<h1>🧪 วงล้อเลขอะตอม 🎡</h1>';
+  const mp=P[me];
+  if(isHost){
+    const clr='<button id="clr" class="alt">🧹 ล้างกระดาน</button>';
+    if(ph=='lobby')h+=`<div class="card"><h2>👩‍🏫 หน้าคุณครู · รอนักเรียนเข้าห้อง</h2><p id="cnt"></p><div id="list"></div><p><button id="go">▶ เริ่มเกม</button>${clr}</p></div>`;
+    else if(ph=='pick')h+=`<div class="card"><h2>👩‍🏫 นักเรียนกำลังเลือกธาตุ</h2><div id="tm" class="tm"></div><p id="cnt"></p><div id="list"></div><p><button id="nxt">🎡 ไปหน้าสุ่มเลข</button>${clr}</p></div>`;
+    else h+=`<div class="card">${SLOT}<p class="c"><button id="spin">🎰 สุ่มเลข</button></p><p id="info" class="c"></p><p class="c"><label><input type="checkbox" id="ex"> ตัดสิทธิ์ผู้ที่เคยติดอันดับแล้ว</label> ${clr}</p></div><div id="hist" class="c"></div><div id="rank"></div>`;
+  }else{
+    if(ph=='lobby'){
+      h+=mp?'<div class="card c"><h2 id="hi"></h2><p>รอคุณครูเริ่มเกมนะ... ⏳</p></div>'
+        :'<div class="card c"><h2>พิมพ์ชื่อเล่นของหนู 🌸</h2><p><input type="text" id="nm" maxlength="20" placeholder="ชื่อเล่น"></p><button id="join">เข้าห้อง</button></div>';
+    }else if(ph=='pick'){
+      h+=mp?`<div class="card"><div id="tm" class="tm"></div><h3 id="hi" class="c"></h3><div id="eq" class="eq"></div>${tableHTML()}<p class="c"><button id="ok">ยืนยัน ✅</button></p></div>`
+        :'<div class="card c"><h2>เกมเริ่มไปแล้ว รอรอบหน้านะ 🌈</h2></div>';
+    }else{
+      h+=`<div class="card">${SLOT}<p class="c" id="info"></p></div><div id="hist" class="c"></div><div id="rank"></div>`;
+    }
+  }
+  $('#app').innerHTML=h;
+}
+function update(){
+  const ph=S.phase||'lobby',mp=P[me],ids=Object.keys(P);
+  if(!mp){selInit=0;sel=[]}
+  T('#cnt','👥 เข้าร่วมแล้ว <b>'+ids.length+'</b>/'+MAX+' คน'+(ph=='pick'?' · ยืนยันแล้ว <b>'+ids.filter(i=>P[i].ready).length+'</b>':''));
+  T('#list',ids.map(i=>`<span class="chip ${P[i].ready?'ok':''}">${esc(P[i].name)}${P[i].ready?' ✓':''}</span>`).join(''));
+  if(mp)T('#hi','สวัสดี '+esc(mp.name)+' 🌸');
+  if(ph=='pick'&&mp){
+    if(!selInit){selInit=1;if(mp.picks)sel=[...mp.picks]}
+    const exp=now()>S.end;
+    document.querySelectorAll('.el').forEach(e=>e.classList.toggle('sel',sel.includes(+e.dataset.z)));
+    const sum=sel.reduce((a,z)=>a+z,0);
+    T('#eq',sel.length?sel.map(z=>`<span class="chip">${SYM[z-1]} (${z})</span>`).join(' + ')+(sel.length==3?` = <b>${sum}</b>`:''):'จิ้มธาตุ 3 ตัว แล้วบวกเลขอะตอมกัน');
+    const b=$('#ok');if(b){b.textContent=mp.ready?'✏️ แก้ไข':'ยืนยัน ✅';b.disabled=exp||(!mp.ready&&sel.length!=3)}
+  }
+  if(ph=='spin'){
+    const c=S.cur,qs=Object.keys(D);
+    T('#hist',qs.map(k=>`<span class="chip" data-q="${k.slice(1)}">#${k.slice(1)} · ${pad(D[k])}</span>`).join(''));
+    T('#info','ผู้เข้าร่วม '+Object.values(P).filter(p=>p.ready).length+' คน · สุ่มแล้ว '+qs.length+' ครั้ง');
+    const ex=$('#ex');if(ex)ex.checked=S.excl!==false;
+    if(c&&c.seq!==lastSeq){lastSeq=c.seq;if(now()-c.at<6000)anim(c.num,c.seq);else{show(c.num);view=c.seq}}
+    const sp=$('#spin');if(sp)sp.disabled=animating;
+    if(!animating)showRank();
+  }
+}
+setInterval(()=>{
+  const e=$('#tm');if(!e||!S.end)return;
+  const s=Math.max(0,Math.ceil((S.end-now())/1000));
+  e.textContent='⏰ '+Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+  const p=P[me];
+  if(!s&&!isHost&&p&&!p.ready&&sel.length==3)confirmPick();
+},500);
+
+function show(n){const d=pad(n);document.querySelectorAll('.reel').forEach((r,i)=>r.textContent=d[i])}
+function anim(n,q){
+  animating=true;T('#rank','');
+  const d=pad(n),rs=[...document.querySelectorAll('.reel')];
+  rs.forEach(r=>r.classList.add('on'));
+  const iv=setInterval(()=>rs.forEach(r=>{if(r.classList.contains('on'))r.textContent=Math.floor(Math.random()*10)}),70);
+  [2,1,0].forEach((i,k)=>setTimeout(()=>{
+    rs[i].classList.remove('on');rs[i].textContent=d[i];
+    if(k==2){clearInterval(iv);animating=false;view=q;update()}
+  },1500+k*1300));
+}
+function showRank(){
+  if(view==null&&S.cur)view=S.cur.seq;
+  T('#rank',view&&D['d'+view]!=null?`<h2 class="c">🏆 เลข ${pad(D['d'+view])}</h2>`+rankHTML(view):'');
+}
+function calc(){
+  const ex=S.excl!==false,won={},out={};
+  const pl=Object.entries(P).filter(([,p])=>p.ready&&p.picks&&p.picks.length==3).map(([id,p])=>({id,...p}));
+  Object.keys(D).map(k=>+k.slice(1)).sort((a,b)=>a-b).forEach(q=>{
+    const n=D['d'+q],g={};
+    pl.filter(p=>!(ex&&won[p.id])).forEach(p=>(g[p.sum]=g[p.sum]||[]).push(p));
+    const gs=Object.keys(g).map(Number).sort((a,b)=>Math.abs(a-n)-Math.abs(b-n)||a-b);
+    let left=TOP;const res=[];
+    for(const s of gs){if(left<=0)break;const m=g[s].slice(0,left);res.push({sum:s,diff:Math.abs(s-n),ps:m});left-=m.length;m.forEach(p=>won[p.id]=1)}
+    out[q]=res;
+  });
+  return out;
+}
+function rankHTML(q){
+  const r=calc()[q];if(!r)return'';
+  if(!r.length)return'<div class="card c">ไม่มีผู้เล่นที่มีสิทธิ์แล้ว</div>';
+  return r.map((g,i)=>`<div class="rk t${i}" style="animation-delay:${i*.08}s"><div class="bd">${i+1}</div><div><b>ผลรวม ${g.sum}</b> <span class="df">${g.diff?'ห่าง '+g.diff:'ตรงเป๊ะ! 🎯'}${g.ps.length>1?' · อันดับร่วม':''}</span>${g.ps.map(p=>`<div class="pp ${p.id==me?'me':''}"><b>${esc(p.name)}</b> <small>${p.picks.map(z=>SYM[z-1]+'('+z+')').join(' + ')}</small></div>`).join('')}</div></div>`).join('');
+}
+function confirmPick(){
+  if(sel.length!=3)return;
+  R.child('players/'+me).update({picks:sel,sum:sel.reduce((a,b)=>a+b,0),ready:true});
+}
+const acts={
+  join(){
+    const v=($('#nm').value||'').trim().slice(0,20);if(!v)return;
+    if(!P[me]&&Object.keys(P).length>=MAX)return alert('ห้องเต็มแล้ว (100 คน)');
+    R.child('players/'+me).set({name:v,ready:false});
+  },
+  ok(){const p=P[me];if(!p)return;if(p.ready)R.child('players/'+me+'/ready').set(false);else confirmPick()},
+  go(){R.child('state').update({phase:'pick',end:now()+PICK_SEC*1000})},
+  nxt(){R.child('state').update({phase:'spin'})},
+  spin(){
+    const used=new Set(Object.values(D)),pool=[];
+    for(let i=6;i<=351;i++)if(!used.has(i))pool.push(i);
+    if(!pool.length)return alert('สุ่มครบทุกเลขแล้ว');
+    $('#spin').disabled=true;
+    const n=pool[Math.floor(Math.random()*pool.length)],q=Object.keys(D).length+1;
+    R.update({['draws/d'+q]:n,'state/cur':{seq:q,num:n,at:firebase.database.ServerValue.TIMESTAMP}});
+  },
+  clr(){if(confirm('ล้างกระดานทั้งหมดใช่ไหม? (ผู้เล่นและผลสุ่มจะหายหมด)')){sel=[];selInit=0;view=null;R.remove()}}
+};
+document.addEventListener('click',e=>{
+  const t=e.target,b=t.closest('button'),el=t.closest('.el'),ch=t.closest('[data-q]');
+  if(el){
+    const p=P[me];if(!p||p.ready||S.phase!=='pick'||now()>S.end)return;
+    const z=+el.dataset.z,i=sel.indexOf(z);
+    if(i>=0)sel.splice(i,1);else if(sel.length<3)sel.push(z);
+    update();
+  }else if(ch&&!animating){view=+ch.dataset.q;showRank()}
+  else if(b&&acts[b.id])acts[b.id]();
+});
+document.addEventListener('change',e=>{if(e.target.id=='ex')R.child('state/excl').set(e.target.checked)});
+document.addEventListener('keydown',e=>{if(e.key=='Enter'&&e.target.id=='nm')acts.join()});
+</script></body></html>
