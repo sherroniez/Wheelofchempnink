@@ -49,7 +49,7 @@ const FIREBASE_CONFIG={
   messagingSenderId:"74005922826",
   appId:"1:74005922826:web:3dd960c9de1214fdba8bf3"
 };
-const HOST_PIN="366282", MAX=100, PICK_SEC=180, TOP=15;
+const HOST_PIN="366282", MAX=100, PICK_SEC=180;
 // ========================================================
 firebase.initializeApp(FIREBASE_CONFIG);
 const db=firebase.database(), R=db.ref('numwheel');
@@ -161,11 +161,13 @@ function calc(){
   const ex=S.excl!==false,won={},out={};
   const pl=Object.entries(P).filter(([,p])=>p.ready&&p.picks&&p.picks.length==3).map(([id,p])=>({id,...p}));
   Object.keys(D).map(k=>+k.slice(1)).sort((a,b)=>a-b).forEach(q=>{
-    const n=D['d'+q],g={};
-    pl.filter(p=>!(ex&&won[p.id])).forEach(p=>(g[p.sum]=g[p.sum]||[]).push(p));
-    const gs=Object.keys(g).map(Number).sort((a,b)=>Math.abs(a-n)-Math.abs(b-n)||a-b);
-    let left=TOP;const res=[];
-    for(const s of gs){if(left<=0)break;const m=g[s].slice(0,left);res.push({sum:s,diff:Math.abs(s-n),ps:m});left-=m.length;m.forEach(p=>won[p.id]=1)}
+    const n=D['d'+q],el=pl.filter(p=>!(ex&&won[p.id])),res=[];
+    if(el.length){
+      // เอาเฉพาะคนที่ห่างจากเลขที่สุ่มได้น้อยที่สุด (ถ้าห่างเท่ากันทั้งสองฝั่ง ได้ทั้งหมด)
+      const best=Math.min(...el.map(p=>Math.abs(p.sum-n))),g={};
+      el.filter(p=>Math.abs(p.sum-n)===best).forEach(p=>(g[p.sum]=g[p.sum]||[]).push(p));
+      Object.keys(g).map(Number).sort((a,b)=>a-b).forEach(s=>{res.push({sum:s,diff:best,ps:g[s]});g[s].forEach(p=>won[p.id]=1)});
+    }
     out[q]=res;
   });
   return out;
@@ -173,7 +175,7 @@ function calc(){
 function rankHTML(q){
   const r=calc()[q];if(!r)return'';
   if(!r.length)return'<div class="card c">ไม่มีผู้เล่นที่มีสิทธิ์แล้ว</div>';
-  return r.map((g,i)=>`<div class="rk t${i}" style="animation-delay:${i*.08}s"><div class="bd">${i+1}</div><div><b>ผลรวม ${g.sum}</b> <span class="df">${g.diff?'ห่าง '+g.diff:'ตรงเป๊ะ! 🎯'}${g.ps.length>1?' · อันดับร่วม':''}</span>${g.ps.map(p=>`<div class="pp ${p.id==me?'me':''}"><b>${esc(p.name)}</b> <small>${p.picks.map(z=>SYM[z-1]+'('+z+')').join(' + ')}</small></div>`).join('')}</div></div>`).join('');
+  return r.map((g,i)=>`<div class="rk t0" style="animation-delay:${i*.08}s"><div class="bd">1</div><div><b>ผลรวม ${g.sum}</b> <span class="df">${g.diff?'ห่าง '+g.diff:'ตรงเป๊ะ! 🎯'}${(r.length>1||g.ps.length>1)?' · อันดับหนึ่งร่วม':''}</span>${g.ps.map(p=>`<div class="pp ${p.id==me?'me':''}"><b>${esc(p.name)}</b> <small>${p.picks.map(z=>SYM[z-1]+'('+z+')').join(' + ')}</small></div>`).join('')}</div></div>`).join('');
 }
 function confirmPick(){
   if(sel.length!=3)return;
